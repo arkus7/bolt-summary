@@ -1,0 +1,102 @@
+<!-- Copyright 2018 Google LLC.
+     SPDX-License-Identifier: Apache-2.0 -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Bolt summary</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://unpkg.com/papaparse@5.3.0/papaparse.min.js"></script>
+    <link href="https://unpkg.com/tabulator-tables@4.9.1/dist/css/tabulator.min.css" rel="stylesheet">
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.9.1/dist/js/tabulator.min.js"></script>
+  </head>
+
+  <body>
+    <h1>
+      Load CSV file
+    </h1>
+    <input type="file" id="file-selector">
+    <p id="status"></p>
+    <div>
+      <div id="output" />
+    </div>
+    <script>
+      const status = document.getElementById('status');
+      const output = document.getElementById('output');
+      if (window.FileList && window.File && window.FileReader) {
+        document.getElementById('file-selector').addEventListener('change', event => {
+          output.src = '';
+          status.textContent = '';
+          const file = event.target.files[0];
+          if (!file.type) {
+            status.textContent = 'Error: The File.type property does not appear to be supported on this browser.';
+            return;
+          }
+          if (!file.type.match('text/csv')) {
+            status.textContent = 'Error: The selected file does not appear to be a CSV file.'
+            return;
+          }
+          const reader = new FileReader();
+          reader.addEventListener('load', event => {
+            const rawData = event.target.result;
+            const results = Papa.parse(rawData, {
+              header: true,
+              dynamicTyping: true
+            });
+
+            const parsed = results.data;
+            const groupingKey = (data) => data['User name'];
+
+            const map = new Map();
+            for (const row of parsed) {
+              const key = groupingKey(row);
+              if (!key) {
+                continue;
+              }
+              if (!map.has(key)) {
+                map.set(key, [row]);
+              } else {
+                map.get(key).push(row);
+              }
+            }
+
+            const tableData = [];
+
+            for (const [key, value] of map.entries()) {
+              tableData.push({
+                name: key,
+                totalPriceWithVat: value.reduce((acc, ride) => acc + ride['Price with VAT'], 0).toFixed(2),
+                rides: value.length,
+              })
+            }
+
+            const table = new Tabulator('#output', {
+              data: tableData,
+              layout: 'fitDataTable',
+              columns: [
+                {
+                  title: 'Name',
+                  field: 'name',
+                  sorter: 'string',
+                },
+                {
+                  title: 'Total price with VAT',
+                  field: 'totalPriceWithVat',
+                  sorter: 'number'
+                },
+                {
+                  title: 'Number of rides',
+                  field: 'rides',
+                  sorter: 'number'
+                }
+              ]
+            });
+          });
+          reader.readAsText(file);
+        });
+      }
+    </script>
+  </body>
+</html>
