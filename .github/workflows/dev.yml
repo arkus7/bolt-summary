@@ -1,12 +1,12 @@
 # This is a basic workflow to help you get started with Actions
 
-name: Upload to S3 (prod)
+name: Upload to S3 (dev)
 
 # Controls when the action will run.
 on:
   # Triggers the workflow on push or pull request events but only for the master branch
   push:
-    branches: [master]
+    branches: [development]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -25,6 +25,6 @@ jobs:
           FILE: ./index.html
           AWS_REGION: ${{ secrets.AWS_REGION }}
           S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
-          S3_KEY: ${{ secrets.PROD_FILE_KEY }}
+          S3_KEY: ${{ secrets.DEV_FILE_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
