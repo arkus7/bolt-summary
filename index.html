@@ -14,9 +14,7 @@
   </head>
 
   <body>
-    <h1>
-      Load CSV file
-    </h1>
+    <h1>Load CSV file with rides summary</h1>
     <input type="file" id="file-selector">
     <p id="status"></p>
     <div>
@@ -26,8 +24,78 @@
       const status = document.getElementById('status');
       const output = document.getElementById('output');
       if (window.FileList && window.File && window.FileReader) {
+        const summaryKeys = {
+          userName: 'User name',
+          priceWithVat: 'Price with VAT',
+        };
+
+        function parseCsvFile(stringFileContents) {
+          const results = Papa.parse(stringFileContents, {
+            header: true,
+            dynamicTyping: true
+          });
+
+          const parsed = results.data;
+          return parsed;
+        }
+
+        function groupRidesByUser(rides) {
+          const groupingKey = (data) => data[summaryKeys.userName];
+
+          const map = new Map();
+          for (const ride of rides) {
+            const key = groupingKey(ride);
+            if (!key) {
+              continue;
+            }
+            if (!map.has(key)) {
+              map.set(key, [ride]);
+            } else {
+              map.get(key).push(ride);
+            }
+          }
+          return map;
+        }
+
+        function createTableData(mapOfRides) {
+          const tableData = [];
+
+          for (const [key, value] of mapOfRides.entries()) {
+            tableData.push({
+              name: key,
+              totalPriceWithVat: value.reduce((acc, ride) => acc + ride[summaryKeys.priceWithVat], 0).toFixed(2),
+              rides: value.length,
+            })
+          }
+
+          return tableData;
+        }
+
+        function displayTable(tableData) {
+          const table = new Tabulator('#output', {
+            data: tableData,
+            layout: 'fitDataTable',
+            columns: [
+              {
+                title: 'Name',
+                field: 'name',
+                sorter: 'string',
+              },
+              {
+                title: 'Total price with VAT',
+                field: 'totalPriceWithVat',
+                sorter: 'number'
+              },
+              {
+                title: 'Number of rides',
+                field: 'rides',
+                sorter: 'number'
+              }
+            ]
+          });
+        }
+
         document.getElementById('file-selector').addEventListener('change', event => {
-          output.src = '';
           status.textContent = '';
           const file = event.target.files[0];
           if (!file.type) {
@@ -41,58 +109,13 @@
           const reader = new FileReader();
           reader.addEventListener('load', event => {
             const rawData = event.target.result;
-            const results = Papa.parse(rawData, {
-              header: true,
-              dynamicTyping: true
-            });
+            const parsed = parseCsvFile(rawData)
+              .filter(ride => ride[summaryKeys.userName])
 
-            const parsed = results.data;
-            const groupingKey = (data) => data['User name'];
+            const groupped = groupRidesByUser(parsed);
+            const tableData = createTableData(groupped);
 
-            const map = new Map();
-            for (const row of parsed) {
-              const key = groupingKey(row);
-              if (!key) {
-                continue;
-              }
-              if (!map.has(key)) {
-                map.set(key, [row]);
-              } else {
-                map.get(key).push(row);
-              }
-            }
-
-            const tableData = [];
-
-            for (const [key, value] of map.entries()) {
-              tableData.push({
-                name: key,
-                totalPriceWithVat: value.reduce((acc, ride) => acc + ride['Price with VAT'], 0).toFixed(2),
-                rides: value.length,
-              })
-            }
-
-            const table = new Tabulator('#output', {
-              data: tableData,
-              layout: 'fitDataTable',
-              columns: [
-                {
-                  title: 'Name',
-                  field: 'name',
-                  sorter: 'string',
-                },
-                {
-                  title: 'Total price with VAT',
-                  field: 'totalPriceWithVat',
-                  sorter: 'number'
-                },
-                {
-                  title: 'Number of rides',
-                  field: 'rides',
-                  sorter: 'number'
-                }
-              ]
-            });
+            displayTable(tableData);
           });
           reader.readAsText(file);
         });
