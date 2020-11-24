@@ -1,5 +1,3 @@
-<!-- Copyright 2018 Google LLC.
-     SPDX-License-Identifier: Apache-2.0 -->
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -98,11 +96,7 @@
         document.getElementById('file-selector').addEventListener('change', event => {
           status.textContent = '';
           const file = event.target.files[0];
-          if (!file.type) {
-            status.textContent = 'Error: The File.type property does not appear to be supported on this browser.';
-            return;
-          }
-          if (!file.type.match('text/csv')) {
+          if (!file.name.match('\.csv$')) {
             status.textContent = 'Error: The selected file does not appear to be a CSV file.'
             return;
           }
