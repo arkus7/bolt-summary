@@ -34,6 +34,20 @@
         vertical-align: top;
       }
 
+      .start-pin-icon {
+        border-radius: 6px;
+        background: green;
+      }
+
+      .end-pin-icon {
+        border-radius: 6px;
+        background: darkred;
+      }
+
+      .moodup-pin-icon {
+        background: orange;
+      }
+
     </style>
   </head>
 
@@ -50,12 +64,92 @@
     <script>
       const status = document.getElementById('status');
       const output = document.getElementById('output');
-      if (window.FileList && window.File && window.FileReader) {
-        const summaryKeys = {
-          userName: 'User name',
-          priceWithVat: 'Price with VAT',
-        };
 
+      const summaryKeys = {
+        userName: 'User name',
+        priceWithVat: 'Price with VAT',
+        from: 'From',
+        to: 'To',
+        city: 'City',
+      };
+
+      const scooterRide = 'Scooter ride';
+      const officeLocation = [52.393510, 16.892980];
+
+      const map = createMap();
+      const ridesLayerGroup = L.layerGroup();
+
+      const startIcon = L.divIcon({ className: 'start-pin-icon' });
+      const endIcon = L.divIcon({ className: 'end-pin-icon' });
+      const moodupIcon = L.divIcon({ className: 'moodup-pin-icon' });
+
+
+      setupMap(map);
+      forwardGeocode([
+        {
+          city: 'Poznań',
+          street: 'Meissnera 2',
+          country: 'PL',
+        },
+        {
+          city: 'Poznań',
+          street: 'Stablewskiego 47',
+          country: 'PL',
+        },
+      ], console.warn);
+
+      function forwardGeocode(locations, callback) {
+        const baseUrl = 'http://open.mapquestapi.com/geocoding/v1/batch';
+        const key = 'gAzvhRApR5ZPkIyFVGwq0yZCiWAKpaEa';
+
+        fetch(`${baseUrl}?key=${key}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ locations }),
+        })
+          .then(data => data.json())
+          .then(data => {
+            const returnedLocations = data.results;
+            return returnedLocations.map((result, index) => {
+              return {
+                address: locations[index],
+                location: result.locations.find(location => location).latLng
+              }
+            });
+          })
+          .then(data => callback(data));
+      }
+
+      function createMap() {
+        const map = L.map('map');
+        map.setView(officeLocation, 15);
+
+        return map;
+      }
+
+      function setupMap(map) {
+        ridesLayerGroup.addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        L.marker(officeLocation, { icon: moodupIcon }).addTo(map)
+          .bindTooltip('Mood Up HQ - Stablewskiego 47');
+        L.circle(officeLocation, {
+          color: 'orange',
+          radius: 500,
+        })
+          .bindPopup('500m radius to Mood Up HQ')
+          .addTo(map);
+      }
+
+      function clearRidesFromMap() {
+        ridesLayerGroup.clearLayers();
+      }
+
+      if (window.FileList && window.File && window.FileReader) {
         function parseCsvFile(stringFileContents) {
           const results = Papa.parse(stringFileContents, {
             header: true,
@@ -91,7 +185,9 @@
             tableData.push({
               name: key,
               totalPriceWithVat: value.reduce((acc, ride) => acc + ride[summaryKeys.priceWithVat], 0).toFixed(2),
-              rides: value.length,
+              ridesCount: value.length,
+              scooterRidesCount: value.filter(ride => ride[summaryKeys.from] === scooterRide).length,
+              rides: value,
             })
           }
 
@@ -115,34 +211,98 @@
               },
               {
                 title: 'Number of rides',
-                field: 'rides',
+                field: 'ridesCount',
                 sorter: 'number'
-              }
-            ]
+              },
+              {
+                title: 'Number of scooter rides',
+                field: 'scooterRidesCount',
+                sorter: 'number'
+              },
+            ],
+            selectable: 1,
+            rowClick: function (e, row) {
+              const rides = row.getData().rides;
+              showRidesOnMap(rides);
+            }
           });
         }
 
-        document.getElementById('file-selector').addEventListener('change', event => {
-          status.textContent = '';
-          const file = event.target.files[0];
-          if (!file.name.match('\.csv$')) {
-            status.textContent = 'Error: The selected file does not appear to be a CSV file.'
-            return;
-          }
-          const reader = new FileReader();
-          reader.addEventListener('load', event => {
-            const rawData = event.target.result;
-            const parsed = parseCsvFile(rawData)
-              .filter(ride => ride[summaryKeys.userName])
+        function showRidesOnMap(rides) {
+          clearRidesFromMap();
+          const carRides = rides.filter(ride => ride[summaryKeys.from] !== scooterRide);
+          const carRidesWithoutFullLocation = carRides.filter(ride => !ride[summaryKeys.from] || !ride[summaryKeys.to]);
+          const carRidesWithFullLocation = carRides.filter(ride => ride[summaryKeys.from] && ride[summaryKeys.to]);
 
-            const groupped = groupRidesByUser(parsed);
-            const tableData = createTableData(groupped);
+          const ridesLocations = carRidesWithFullLocation.map(ride => {
+            const city = ride[summaryKeys.city];
+            const country = 'PL';
 
-            displayTable(tableData);
+            return {
+              from: {
+                country,
+                city,
+                street: ride[summaryKeys.from],
+              },
+              to: {
+                country,
+                city,
+                street: ride[summaryKeys.to],
+              }
+            }
           });
-          reader.readAsText(file);
-        });
+
+          forwardGeocode(ridesLocations.map(location => [location.from, location.to]).flat(), function (geocodedLocations) {
+            const latLngsForBounds = [];
+            for (let i = 0; i < geocodedLocations.length; i += 2) {
+              const from = geocodedLocations[i];
+              const to = geocodedLocations[i + 1];
+
+              const latLngs = [
+                [from.location.lat, from.location.lng],
+                [to.location.lat, to.location.lng],
+              ];
+
+              latLngsForBounds.push(...latLngs);
+
+              L.marker(latLngs[0], { icon: startIcon, html: 'Start' })
+                .bindTooltip(`Start: ${from.address.street}`)
+                .addTo(ridesLayerGroup);
+              L.marker(latLngs[1], { icon: endIcon, html: 'End' })
+                .bindTooltip(`End: ${to.address.street}`)
+                .addTo(ridesLayerGroup);
+
+              L.polyline(latLngs)
+                .bindPopup(`From: ${from.address.street}<br />To: ${to.address.street}`)
+                .addTo(ridesLayerGroup);
+
+            }
+
+            map.fitBounds(latLngsForBounds);
+          });
+        }
       }
+
+      document.getElementById('file-selector').addEventListener('change', event => {
+        status.textContent = '';
+        const file = event.target.files[0];
+        if (!file.name.match('\.csv$')) {
+          status.textContent = 'Error: The selected file does not appear to be a CSV file.'
+          return;
+        }
+        const reader = new FileReader();
+        reader.addEventListener('load', event => {
+          const rawData = event.target.result;
+          const parsed = parseCsvFile(rawData)
+            .filter(ride => ride[summaryKeys.userName])
+
+          const groupped = groupRidesByUser(parsed);
+          const tableData = createTableData(groupped);
+
+          displayTable(tableData);
+        });
+        reader.readAsText(file);
+      });
     </script>
   </body>
 </html>
