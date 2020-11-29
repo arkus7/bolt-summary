@@ -16,20 +16,33 @@
     <style>
       #wrapper {
         min-width: 800px;
-        min-height: 500px;
+        min-height: 60vh;
         border: 1px solid black;
+        background: whitesmoke;
+      }
+
+      #tables {
+        display: inline-block;
+        width: 50%;
       }
 
       #output {
-        width: 50%;
-        border: 1px solid green;
+        height: 55vh;
+        width: 100%;
         display: inline-block;
+        background: whitesmoke;
+      }
+
+      #ridesTable {
+        height: 25vh;
+        width: 100%;
+        background: whitesmoke;
       }
 
       #map {
-        min-height: 50vh;
+        min-height: 80vh;
+        height: 100%;
         width: 49%;
-        border: 1px solid blueviolet;
         display: inline-block;
         vertical-align: top;
       }
@@ -56,7 +69,14 @@
     <input type="file" id="file-selector">
     <p id="status"></p>
     <div id="wrapper">
-      <div id="output"></div>
+      <div id="tables">
+        <div id="output">
+          <p>Table with data will be displayed here.</p>
+        </div>
+        <div id="ridesTable">
+          <p>Table with user rides will be displayed here after one of the users is chosen</p>
+        </div>
+      </div>
       <div id="map">
         <p>Map should be displayed here</p>
       </div>
@@ -71,6 +91,10 @@
         from: 'From',
         to: 'To',
         city: 'City',
+        date: 'Date',
+        distance: 'Distance in km',
+        duration: 'Duration in minutes',
+        vehicleCategory: 'Vehicle category',
       };
 
       const scooterRide = 'Scooter ride';
@@ -85,18 +109,6 @@
 
 
       setupMap(map);
-      forwardGeocode([
-        {
-          city: 'Poznań',
-          street: 'Meissnera 2',
-          country: 'PL',
-        },
-        {
-          city: 'Poznań',
-          street: 'Stablewskiego 47',
-          country: 'PL',
-        },
-      ], console.warn);
 
       function forwardGeocode(locations, callback) {
         const baseUrl = 'http://open.mapquestapi.com/geocoding/v1/batch';
@@ -224,7 +236,49 @@
             rowClick: function (e, row) {
               const rides = row.getData().rides;
               showRidesOnMap(rides);
+              showRidesOnTable(rides);
             }
+          });
+        }
+
+        function showRidesOnTable(rides) {
+          const table = new Tabulator('#ridesTable', {
+            data: rides,
+            layout: 'fitDataTable',
+            columns: [
+              {
+                title: 'Date',
+                field: summaryKeys.date,
+              },
+              {
+                title: 'From',
+                field: summaryKeys.from,
+              },
+              {
+                title: 'To',
+                field: summaryKeys.to,
+              },
+              {
+                title: 'City',
+                field: summaryKeys.city,
+              },
+              {
+                title: 'Distance [km]',
+                field: summaryKeys.distance,
+              },
+              {
+                title: 'Duration [minutes]',
+                field: summaryKeys.duration,
+              },
+              {
+                title: 'Vehicle category',
+                field: summaryKeys.vehicleCategory,
+              },
+              {
+                title: 'Price (with VAT)',
+                field: summaryKeys.priceWithVat,
+              }
+            ]
           });
         }
 
