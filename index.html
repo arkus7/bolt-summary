@@ -12,14 +12,40 @@
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+
+    <style>
+      #wrapper {
+        min-width: 800px;
+        min-height: 500px;
+        border: 1px solid black;
+      }
+
+      #output {
+        width: 50%;
+        border: 1px solid green;
+        display: inline-block;
+      }
+
+      #map {
+        min-height: 50vh;
+        width: 49%;
+        border: 1px solid blueviolet;
+        display: inline-block;
+        vertical-align: top;
+      }
+
+    </style>
   </head>
 
   <body>
     <h1>Load CSV file with rides summary</h1>
     <input type="file" id="file-selector">
     <p id="status"></p>
-    <div>
-      <div id="output" />
+    <div id="wrapper">
+      <div id="output"></div>
+      <div id="map">
+        <p>Map should be displayed here</p>
+      </div>
     </div>
     <script>
       const status = document.getElementById('status');
