@@ -361,6 +361,9 @@
         }
         const reader = new FileReader();
         reader.addEventListener('load', event => {
+          document.getElementById('ridesTable').innerHTML = "<p>Table with user rides will be displayed here after one of the users is selected</p>";
+          clearRidesFromMap();
+
           const rawData = event.target.result;
           const parsed = parseCsvFile(rawData);
 
