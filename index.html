@@ -86,16 +86,31 @@
       const output = document.getElementById('output');
 
       const summaryKeys = {
-        userName: 'User name',
-        priceWithVat: 'Price with VAT',
-        from: 'From',
-        to: 'To',
-        city: 'City',
-        date: 'Date',
-        distance: 'Distance in km',
-        duration: 'Duration in minutes',
-        vehicleCategory: 'Vehicle category',
+        en: {
+          userName: 'User name',
+          priceWithVat: 'Price with VAT',
+          from: 'From',
+          to: 'To',
+          city: 'City',
+          date: 'Date',
+          distance: 'Distance in km',
+          duration: 'Duration in minutes',
+          vehicleCategory: 'Vehicle category',
+        },
+        pl: {
+          userName: 'Nazwa użytkownika',
+          priceWithVat: 'Cena z VAT',
+          from: 'Z',
+          to: 'Do',
+          city: 'Miasto',
+          date: 'Data',
+          distance: 'Odległość w km',
+          duration: 'Czas trwania minutes',
+          vehicleCategory: 'Kategoria pojazdu',
+        }
       };
+
+      let language = 'en';
 
       const scooterRide = 'Scooter ride';
       const officeLocation = [52.393510, 16.892980];
@@ -173,7 +188,7 @@
         }
 
         function groupRidesByUser(rides) {
-          const groupingKey = (data) => data[summaryKeys.userName];
+          const groupingKey = (data) => data[summaryKeys[language].userName];
 
           const map = new Map();
           for (const ride of rides) {
@@ -196,9 +211,9 @@
           for (const [key, value] of mapOfRides.entries()) {
             tableData.push({
               name: key,
-              totalPriceWithVat: value.reduce((acc, ride) => acc + ride[summaryKeys.priceWithVat], 0).toFixed(2),
+              totalPriceWithVat: value.reduce((acc, ride) => acc + ride[summaryKeys[language].priceWithVat], 0).toFixed(2),
               ridesCount: value.length,
-              scooterRidesCount: value.filter(ride => ride[summaryKeys.from] === scooterRide).length,
+              scooterRidesCount: value.filter(ride => ride[summaryKeys[language].from] === scooterRide).length,
               rides: value,
             })
           }
@@ -248,35 +263,35 @@
             columns: [
               {
                 title: 'Date',
-                field: summaryKeys.date,
+                field: summaryKeys[language].date,
               },
               {
                 title: 'From',
-                field: summaryKeys.from,
+                field: summaryKeys[language].from,
               },
               {
                 title: 'To',
-                field: summaryKeys.to,
+                field: summaryKeys[language].to,
               },
               {
                 title: 'City',
-                field: summaryKeys.city,
+                field: summaryKeys[language].city,
               },
               {
                 title: 'Distance [km]',
-                field: summaryKeys.distance,
+                field: summaryKeys[language].distance,
               },
               {
                 title: 'Duration [minutes]',
-                field: summaryKeys.duration,
+                field: summaryKeys[language].duration,
               },
               {
                 title: 'Vehicle category',
-                field: summaryKeys.vehicleCategory,
+                field: summaryKeys[language].vehicleCategory,
               },
               {
                 title: 'Price (with VAT)',
-                field: summaryKeys.priceWithVat,
+                field: summaryKeys[language].priceWithVat,
               }
             ]
           });
@@ -284,24 +299,24 @@
 
         function showRidesOnMap(rides) {
           clearRidesFromMap();
-          const carRides = rides.filter(ride => ride[summaryKeys.from] !== scooterRide);
-          const carRidesWithoutFullLocation = carRides.filter(ride => !ride[summaryKeys.from] || !ride[summaryKeys.to]);
-          const carRidesWithFullLocation = carRides.filter(ride => ride[summaryKeys.from] && ride[summaryKeys.to]);
+          const carRides = rides.filter(ride => ride[summaryKeys[language].from] !== scooterRide);
+          const carRidesWithoutFullLocation = carRides.filter(ride => !ride[summaryKeys[language].from] || !ride[summaryKeys[language].to]);
+          const carRidesWithFullLocation = carRides.filter(ride => ride[summaryKeys[language].from] && ride[summaryKeys[language].to]);
 
           const ridesLocations = carRidesWithFullLocation.map(ride => {
-            const city = ride[summaryKeys.city];
+            const city = ride[summaryKeys[language].city];
             const country = 'PL';
 
             return {
               from: {
                 country,
                 city,
-                street: ride[summaryKeys.from],
+                street: ride[summaryKeys[language].from],
               },
               to: {
                 country,
                 city,
-                street: ride[summaryKeys.to],
+                street: ride[summaryKeys[language].to],
               }
             }
           });
@@ -347,10 +362,13 @@
         const reader = new FileReader();
         reader.addEventListener('load', event => {
           const rawData = event.target.result;
-          const parsed = parseCsvFile(rawData)
-            .filter(ride => ride[summaryKeys.userName])
+          const parsed = parseCsvFile(rawData);
 
-          const groupped = groupRidesByUser(parsed);
+          language = Object.keys(parsed[0]).includes(summaryKeys.en.userName) ? 'en' : 'pl';
+
+          const validData = parsed.filter(ride => ride[summaryKeys[language].userName])
+
+          const groupped = groupRidesByUser(validData);
           const tableData = createTableData(groupped);
 
           displayTable(tableData);
